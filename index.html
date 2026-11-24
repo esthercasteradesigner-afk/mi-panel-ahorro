@@ -1,0 +1,118 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f2ed">
+<title>Mi dinero</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f2ed;color:#24241f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:25px 18px 50px}
+main{max-width:600px;margin:auto}
+header{margin:18px 0 28px}
+small{color:#85847d;letter-spacing:1.5px;text-transform:uppercase;font-size:10px}
+h1{font-family:Georgia,serif;font-weight:400;font-size:35px;margin:8px 0}
+.total{background:#252720;color:#fff;padding:25px;border-radius:17px;margin-bottom:25px}
+.total small{color:#c5c5b9}
+.total strong{display:block;font-size:34px;font-weight:500;margin-top:8px}
+h2{font-size:17px;font-weight:600;margin:27px 0 13px}
+.funds{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fund{background:#fff;border-radius:14px;padding:17px 14px}
+.fund .name{font-size:13px;color:#77766f}
+.fund strong{display:block;font-size:21px;margin:10px 0}
+.fund input{width:100%;border:0;border-bottom:1px solid #ddd;background:transparent;padding:8px 0;font-size:15px;color:#24241f}
+.note{font-size:11px;color:#85847d;line-height:1.5;margin-top:8px}
+.panel{background:#fff;border-radius:14px;padding:18px;margin-top:12px}
+label{display:block;font-size:12px;color:#77766f;margin:12px 0 6px}
+input,select{width:100%;padding:12px;border:1px solid #e4e2dc;border-radius:9px;background:#fff;font-size:15px;color:#24241f}
+button{width:100%;border:0;border-radius:9px;padding:13px;background:#252720;color:white;font-size:14px;margin-top:15px}
+.entry{padding:12px 0;border-bottom:1px solid #eee;font-size:13px;display:flex;justify-content:space-between;gap:10px}
+.entry:last-child{border:0}
+.positive{color:#36765b}.negative{color:#a44c43}
+footer{font-size:11px;color:#85847d;text-align:center;margin-top:28px}
+@media(max-width:360px){.funds{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<small>Tu espacio financiero</small>
+<h1>Mi dinero.</h1>
+</header>
+
+<section class="total">
+<small>Total ahorrado</small>
+<strong id="total">0,00 €</strong>
+</section>
+
+<h2>Mis ahorros</h2>
+<div class="funds" id="funds"></div>
+<p class="note">Tus cantidades se guardan en este dispositivo. No se conectan cuentas bancarias.</p>
+
+<h2>Registrar movimiento</h2>
+<section class="panel">
+<label>Hucha</label>
+<select id="bucket"></select>
+<label>Tipo de movimiento</label>
+<select id="type">
+<option value="add">Añadir dinero</option>
+<option value="remove">Retirar dinero</option>
+</select>
+<label>Importe (€)</label>
+<input id="amount" type="number" min="0.01" step="0.01" placeholder="Ej. 50">
+<label>Concepto</label>
+<input id="concept" type="text" placeholder="Ej. Trabajo de diseño">
+<button onclick="saveMovement()">Guardar movimiento</button>
+</section>
+
+<h2>Movimientos</h2>
+<section class="panel" id="history">
+<p class="note">Todavía no hay movimientos.</p>
+</section>
+
+<footer>Una forma más tranquila de organizar tu dinero.</footer>
+</main>
+<script>
+const names={
+disponible:"Disponible / estabilidad",
+emergencias:"Emergencias",
+intocable:"Intocable",
+ordenador:"Ordenador"
+};
+let data=JSON.parse(localStorage.getItem("misAhorros")||"null")||{
+disponible:0,emergencias:0,intocable:0,ordenador:0,movements:[]
+};
+const euro=n=>Number(n).toLocaleString("es-ES",{style:"currency",currency:"EUR"});
+function render(){
+document.getElementById("total").textContent=euro(Object.keys(names).reduce((s,k)=>s+Number(data[k]||0),0));
+document.getElementById("funds").innerHTML=Object.keys(names).map(k=>`
+<div class="fund"><div class="name">${names[k]}</div>
+<strong>${euro(data[k])}</strong>
+<input type="number" min="0" step=".01" value="${data[k]}" aria-label="Actualizar ${names[k]}" onchange="updateFund('${k}',this.value)">
+</div>`).join("");
+document.getElementById("bucket").innerHTML=Object.keys(names).map(k=>`<option value="${k}">${names[k]}</option>`).join("");
+document.getElementById("history").innerHTML=data.movements.length?data.movements.slice().reverse().map(m=>`
+<div class="entry"><span>${m.concept}<br><span class="note">${m.name} · ${m.date}</span></span>
+<strong class="${m.amount>=0?'positive':'negative'}">${m.amount>=0?'+':'−'}${euro(Math.abs(m.amount))}</strong></div>`).join(""):'<p class="note">Todavía no hay movimientos.</p>';
+}
+function persist(){localStorage.setItem("misAhorros",JSON.stringify(data));render()}
+function updateFund(k,v){if(v===""||Number(v)<0)return;data[k]=Number(v);persist()}
+function saveMovement(){
+let k=document.getElementById("bucket").value;
+let amount=Number(document.getElementById("amount").value);
+let type=document.getElementById("type").value;
+let concept=document.getElementById("concept").value.trim()||"Movimiento";
+if(!amount||amount<=0)return alert("Introduce un importe válido.");
+let change=type==="add"?amount:-amount;
+if(data[k]+change<0)return alert("No hay suficiente dinero en esa hucha.");
+data[k]=Math.round((data[k]+change)*100)/100;
+data.movements.push({name:names[k],concept,amount:change,date:new Date().toLocaleDateString("es-ES")});
+document.getElementById("amount").value="";
+document.getElementById("concept").value="";
+persist();
+}
+render();
+</script>
+</body>
+</html>
